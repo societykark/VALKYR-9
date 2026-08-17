@@ -96,7 +96,7 @@ async function sendSafePhoto(chatId, caption, parseMode = 'Markdown', extra = {}
 }
 
 // =====================================================
-//  COMANDOS BÁSICOS (/start, /help, /menu, /ping, /test)
+//  COMANDOS BÁSICOS
 // =====================================================
 
 bot.onText(/\/start/, async (msg) => {
@@ -263,7 +263,6 @@ bot.onText(/\/test/, async (msg) => {
 //  🤖 COMANDOS DE IA
 // =====================================================
 
-// /ai (GROQ)
 if (groq) {
   bot.onText(/\/ai (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
@@ -286,7 +285,6 @@ if (groq) {
   });
 }
 
-// /openrouter
 bot.onText(/\/openrouter (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -311,7 +309,6 @@ bot.onText(/\/openrouter (.+)/, async (msg, match) => {
   }
 });
 
-// /gemini
 bot.onText(/\/gemini (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -335,7 +332,6 @@ bot.onText(/\/gemini (.+)/, async (msg, match) => {
   }
 });
 
-// /chat (Pollinations)
 bot.onText(/\/chat (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -390,7 +386,6 @@ bot.onText(/\/aisearchimg (.+)/, async (msg, match) => {
   }
 });
 
-// /waifu (imagen random)
 bot.onText(/\/waifu/, async (msg) => {
   const chatId = msg.chat.id;
   try {
@@ -503,7 +498,7 @@ bot.onText(/\/ytv (.+)/, async (msg, match) => {
 });
 
 // =====================================================
-//  🔍 OSINT - USUARIO, EMAIL, PHONE, DOMAIN, IP
+//  🔍 OSINT
 // =====================================================
 
 bot.onText(/\/username (.+)/, async (msg, match) => {
@@ -721,4 +716,102 @@ bot.onText(/\/horoscopo (.+)/, async (msg, match) => {
   try {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
-      messages:
+      messages: [{ role: 'user', content: `Genera un horóscopo para ${signo} para hoy, en español, positivo.` }],
+      max_tokens: 200,
+    });
+    await sendSafePhoto(chatId, `♈ *Horóscopo para ${signo}:*\n${completion.choices[0].message.content}`);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
+bot.onText(/\/chiste/, async (msg) => {
+  const chatId = msg.chat.id;
+  try {
+    const { data } = await axios.get('https://v2.jokeapi.dev/joke/Any?lang=es');
+    const chiste = data.type === 'single' ? data.joke : `${data.setup}\n${data.delivery}`;
+    await sendSafePhoto(chatId, `😂 *Chiste:*\n${chiste}`);
+  } catch {
+    await sendSafePhoto(chatId, '😂 ¿Por qué los programadores prefieren el otoño? Porque tienen menos bugs.');
+  }
+});
+
+bot.onText(/\/poema (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const tema = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: `Escribe un poema corto sobre "${tema}"` }],
+      max_tokens: 200,
+    });
+    await sendSafePhoto(chatId, `📝 *Poema:*\n${completion.choices[0].message.content}`);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
+// =====================================================
+//  ⏰ RECORDATORIO
+// =====================================================
+
+const recordatorios = new Map();
+bot.onText(/\/recordatorio (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const params = match[1].split(' ');
+  if (params.length < 2) {
+    return await sendSafePhoto(chatId, '❌ Uso: /recordatorio [tiempo] [texto]\nEj: /recordatorio 10min Llamar a Juan');
+  }
+  const tiempoStr = params[0];
+  const texto = params.slice(1).join(' ');
+  let segundos = 0;
+  if (tiempoStr.includes('s')) segundos = parseInt(tiempoStr) || 10;
+  else if (tiempoStr.includes('min')) segundos = (parseInt(tiempoStr) || 1) * 60;
+  else if (tiempoStr.includes('h')) segundos = (parseInt(tiempoStr) || 1) * 3600;
+  else segundos = parseInt(tiempoStr) || 10;
+
+  const id = Date.now();
+  recordatorios.set(id, { chatId, texto, tiempo: Date.now() + segundos * 1000 });
+  await sendSafePhoto(chatId, `⏰ Recordatorio configurado para ${tiempoStr}.`);
+  setTimeout(async () => {
+    const data = recordatorios.get(id);
+    if (data) {
+      await bot.sendMessage(data.chatId, `⏰ *Recordatorio:* ${data.texto}`);
+      recordatorios.delete(id);
+    }
+  }, segundos * 1000);
+});
+
+// =====================================================
+//  💬 RESPUESTA A MENSAJES SIN COMANDOS
+// =====================================================
+
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  if (!text || text.startsWith('/')) return;
+
+  const responses = [
+    '🌸 ¡Hola! ¿Cómo estás?',
+    '🎻 ¿Sabes tocar el violín? Yo sí... en el cielo.',
+    '✨ ¡Qué bonito día para hacer música!',
+    '💖 Me encanta cuando me hablas.',
+    '🌙 ¿Ya viste la luna hoy? Está hermosa.',
+    '🌸 Kaori dice: "La música es libertad."',
+    '🎻 Si necesitas algo, solo dilo.',
+  ];
+  const randomText = responses[Math.floor(Math.random() * responses.length)];
+  await sendSafePhoto(chatId, `🌸 ${randomText}`);
+});
+
+// =====================================================
+//  ⚠️ MANEJO DE ERRORES DE POLLING
+// =====================================================
+
+bot.on('polling_error', (error) => {
+  console.warn(`⚠️ Error de polling: ${error.code} - ${error.message}`);
+});
+
+console.log('🌸 Kaori Bot Ultra UNIFICADO corriendo...');
+console.log(`🖼️ ${misImagenes.length} imágenes cargadas desde 'assets'`);
