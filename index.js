@@ -1,7 +1,7 @@
 // =====================================================
 //  🚀 KAORI BOT ULTRA - EL BOT MÁS VERGAS DE TELEGRAM
+//  UNIFICADO CON OSINT, IA, DESCARGAS, JUEGOS Y MÁS
 //  Inspirado en *Your Lie in April*
-//  Con amor y violín 🎻
 // =====================================================
 
 import TelegramBot from 'node-telegram-bot-api';
@@ -15,6 +15,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
+import whois from 'whois';
+import dns from 'dns';
+import crypto from 'crypto';
 
 // =====================================================
 //  CONFIGURACIÓN INICIAL
@@ -25,7 +28,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // =====================================================
-//  LECTURA DE VARIABLES DE ENTORNO
+//  LECTURA DE VARIABLES DE ENTORNO (TODAS LAS KEYS)
 // =====================================================
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENROUTER_KEY = process.env.OPENROUTER_KEY;
@@ -35,7 +38,13 @@ const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
 const NEWSAPI_KEY = process.env.NEWSAPI_KEY;
 const EXCHANGERATE_KEY = process.env.EXCHANGERATE_KEY;
 const POLLINATIONS_KEY = process.env.POLLINATIONS_KEY;
-const LEMPI_API_KEY = 'lem336'; // La clave pública de Lempi
+const NUMVERIFY_KEY = process.env.NUMVERIFY_KEY;
+const SHODAN_KEY = process.env.SHODAN_KEY;
+const VIRUSTOTAL_KEY = process.env.VIRUSTOTAL_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const EMAILREP_KEY = process.env.EMAILREP_KEY;
+const ADMIN_ID = process.env.ADMIN_ID;
+const LEMPI_API_KEY = 'lem336';
 
 if (!TELEGRAM_TOKEN) {
   console.error('❌ FALTA TELEGRAM_TOKEN en .env');
@@ -49,7 +58,7 @@ const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 const groq = GROQ_KEY ? new Groq({ apiKey: GROQ_KEY }) : null;
 
 // =====================================================
-//  🖼️ CARGAR IMÁGENES DE KAORI DESDE CARPETA assets
+//  🖼️ CARGAR IMÁGENES DE KAORI
 // =====================================================
 const imagenesFolder = path.join(__dirname, 'assets');
 const misImagenes = [];
@@ -69,12 +78,10 @@ try {
   misImagenes.push('https://i.ibb.co/F45TJJqH/IMG-4774.jpg');
 }
 
-// Función para obtener imagen aleatoria
 const getRandomImage = () => {
   return misImagenes[Math.floor(Math.random() * misImagenes.length)];
 };
 
-// Función para enviar mensaje con imagen de Kaori
 async function sendSafePhoto(chatId, caption, parseMode = 'Markdown', extra = {}) {
   try {
     const imagePath = getRandomImage();
@@ -91,17 +98,18 @@ async function sendSafePhoto(chatId, caption, parseMode = 'Markdown', extra = {}
 }
 
 // =====================================================
-//  🏠 COMANDO /start
+//  COMANDOS BÁSICOS (/start, /help, /menu, /ping, /test)
 // =====================================================
+
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  const text =
+  await sendSafePhoto(chatId,
 `🌸 *Kaori Bot Ultra* 🎻
 
 *"La música es libertad. Tocar el violín es como hablar sin palabras."*
 — Kaori Miyazono
 
-✨ *Bot con más de 40 comandos, IA, descargas, clima, juegos y más.*
+✨ *Bot con más de 80 comandos: IA, OSINT, descargas, clima, juegos y más.*
 
 *Comandos principales:*
 /help - Lista completa
@@ -119,86 +127,112 @@ bot.onText(/\/start/, async (msg) => {
 /chiste - Chiste random
 /poema [tema] - Poema generado por IA
 
-*Creado con amor y violín.* 🎻✨`;
-
-  await sendSafePhoto(chatId, text);
+*Creado con amor y violín.* 🎻✨`
+  );
 });
 
-// =====================================================
-//  📋 COMANDO /help (LISTA COMPLETA)
-// =====================================================
 bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
-  const text =
-`📋 *Lista completa de comandos:*
+  await sendSafePhoto(chatId,
+`📋 *LISTA COMPLETA DE COMANDOS*
 
-🔍 *Búsqueda*
-/aisearchimg [texto] - Busca imágenes con IA (Lempi)
-/pin [término] - Busca en Pinterest
-/sp [canción] - Busca en Spotify
-/stickers [texto] - Busca stickers
-/tiktoksearch [texto] - Busca en TikTok
+🤖 *IA:*
+/ai [pregunta] - Groq (rápida)
+/openrouter [pregunta] - OpenRouter
+/gemini [pregunta] - Gemini
+/chat [pregunta] - Pollinations
+/claude [pregunta] - Claude (Lempi)
+/qwen [pregunta] - Qwen (Lempi)
 
-💾 *Descarga*
-/applemusic [url] - Descarga de Apple Music
-/facebook [url] - Descarga de Facebook
-/instagram [url] - Descarga de Instagram
-/mediafire [url] - Descarga de MediaFire
-/spotifydl [url] - Descarga de Spotify
-/tiktokdl [url] - Descarga de TikTok sin marca
-/yta [url o búsqueda] - Descarga audio de YouTube
-/ytv [url o búsqueda] - Descarga video de YouTube
+🎨 *IMÁGENES:*
+/imagen [descripción] - Genera con Pollinations
+/aisearchimg [texto] - IA (Lempi)
+/pin [término] - Pinterest
+/zimg [descripción] - Zimg (Lempi)
+/brat [texto] - Imagen estilo Brat
+/waifu - Waifu random (SFW)
 
-🛠️ *Herramientas*
-/brat [texto] - Genera imagen estilo Brat
-/cf - Obtén el flujo actual
-/emojimix [emoji1] [emoji2] - Mezcla dos emojis
-/whatmusic [url o nombre] - Identifica una canción
-/transcribe [url] - Transcribe audio a texto
+🎵 *MÚSICA Y DESCARGAS:*
+/video [búsqueda] - Audio de YouTube
+/music [búsqueda] - Alias de /video
+/yta [búsqueda] - Audio YouTube (Lempi)
+/ytv [búsqueda] - Video YouTube (Lempi)
+/applemusic [url] - Apple Music
+/spotifydl [url] - Spotify
+/tiktokdl [url] - TikTok sin marca
+/instagram [url] - Instagram
+/facebook [url] - Facebook
+/mediafire [url] - MediaFire
 
-🤖 *IA*
-/claude [pregunta] - Chat con Claude
-/gemini [pregunta] - Chat con Gemini
-/qwen [pregunta] - Chat con Qwen
-/zimg [descripción] - Genera imagen con IA (Zimg)
+🔍 *OSINT:*
+/username [usuario] - Buscar en redes
+/email [correo] - EmailRep + HIBP
+/phone [número] - Información de teléfono
+/domain [dominio] - WHOIS
+/ip [IP] - Geolocalización
+/portscan [IP] - Escáner de puertos
+/shodan [IP] - Shodan
+/dork [consulta] - Google Dork
+/ipgeo [IP] - Ubicación exacta
+/mac [MAC] - Fabricante
+/subdomains [dominio] - Enumerar subdominios
+/password [contraseña] - Verificar filtrada
+/breach [email] - Brechas de seguridad
+/cve [keyword] - Buscar vulnerabilidades
+/asn [IP] - Información ASN
+/cors [url] - Verificar CORS
+/tech [dominio] - Detectar tecnologías
+/wayback [url] - Historial en Wayback
 
-🎨 *Canvas*
+🌐 *UTILIDADES:*
+/clima [ciudad] - Clima actual
+/dolar - Cotización del dólar
+/bitcoin - Precio de Bitcoin
+/qr [texto] - Genera QR
+/traducir [texto] - Traduce a español
+/wikipedia [término] - Busca en Wikipedia
+/resumen [url] - Resume una página web
+/noticias - Últimas noticias
+/recordatorio [tiempo] [texto] - Recordatorio
+/emojimix [emoji1] [emoji2] - Mezcla emojis
+
+🎮 *JUEGOS:*
+/trivia - Pregunta random
+/adivina [número] - Adivina el número
+/horoscopo [signo] - Horóscopo del día
+/chiste - Chiste random
+/poema [tema] - Poema generado por IA
+
+🎨 *CANVAS:*
 /welcome [nombre] [grupo] - Imagen de bienvenida
 /goodbye [nombre] [grupo] - Imagen de despedida
 
-📋 *Otros*
+📋 *OTROS:*
 /start - Inicio
-/menu - Menú de comandos
+/menu - Menú
 /ping - Latencia
 /test - Diagnóstico
-/ai [texto] - Pregunta a la IA (Groq)
-/imagen [descripción] - Genera imagen con IA
-/clima [ciudad] - Clima actual
-/video [búsqueda] - Descarga audio de YouTube
-/music [búsqueda] - Alias de /video
-/qr [texto] - Genera QR
-/leerqr - Lee QR (en desarrollo)
-/dolar - Cotización del dólar
-/bitcoin - Precio de Bitcoin
-/wikipedia [término] - Resumen de Wikipedia
-/resumen [url] - Resume una página web
-/trivia - Pregunta de cultura general
-/adivina [número] - Adivina el número (1-100)
-/horoscopo [signo] - Horóscopo del día
-/noticias - Últimas noticias
-/traducir [texto] - Traduce a español
-/chiste - Chiste aleatorio
-/poema [tema] - Poema generado por IA
-/recordatorio [tiempo] [texto] - Recordatorio
-
-🎻 *Cada interacción incluye una imagen de Kaori.*`;
-
-  await sendSafePhoto(chatId, text);
+/help - Esta ayuda`
+  );
 });
 
-// =====================================================
-//  🏓 COMANDO /ping (con latencia)
-// =====================================================
+bot.onText(/\/menu/, async (msg) => {
+  const chatId = msg.chat.id;
+  await sendSafePhoto(chatId,
+`📂 *MENÚ DE COMANDOS*
+
+🤖 *IA:* /ai, /openrouter, /gemini, /chat, /claude, /qwen
+🎨 *Imágenes:* /imagen, /aisearchimg, /pin, /zimg, /brat, /waifu
+🎵 *Música:* /video, /yta, /ytv, /applemusic, /spotifydl, /tiktokdl, /instagram, /facebook, /mediafire
+🔍 *OSINT:* /username, /email, /phone, /domain, /ip, /portscan, /shodan, /dork, /ipgeo, /mac, /subdomains, /password, /breach, /cve, /asn, /cors, /tech, /wayback
+🌐 *Utilidades:* /clima, /dolar, /bitcoin, /qr, /traducir, /wikipedia, /resumen, /noticias, /recordatorio, /emojimix
+🎮 *Juegos:* /trivia, /adivina, /horoscopo, /chiste, /poema
+🎨 *Canvas:* /welcome, /goodbye
+
+Usa /help para ver descripciones.`
+  );
+});
+
 bot.onText(/\/ping/, async (msg) => {
   const chatId = msg.chat.id;
   const start = Date.now();
@@ -207,9 +241,6 @@ bot.onText(/\/ping/, async (msg) => {
   await sendSafePhoto(chatId, `⚡ *Latencia:* ${end - start} ms`);
 });
 
-// =====================================================
-//  🔍 COMANDO /test (DIAGNÓSTICO)
-// =====================================================
 bot.onText(/\/test/, async (msg) => {
   const chatId = msg.chat.id;
   let report = `🔍 *DIAGNÓSTICO*\n\n`;
@@ -221,12 +252,17 @@ bot.onText(/\/test/, async (msg) => {
   report += `✅ NEWSAPI_KEY: ${NEWSAPI_KEY ? 'OK' : 'FALTA'}\n`;
   report += `✅ EXCHANGERATE_KEY: ${EXCHANGERATE_KEY ? 'OK' : 'FALTA'}\n`;
   report += `✅ POLLINATIONS_KEY: ${POLLINATIONS_KEY ? 'OK' : 'FALTA'}\n`;
+  report += `✅ NUMVERIFY_KEY: ${NUMVERIFY_KEY ? 'OK' : 'FALTA'}\n`;
+  report += `✅ SHODAN_KEY: ${SHODAN_KEY ? 'OK' : 'FALTA'}\n`;
+  report += `✅ VIRUSTOTAL_KEY: ${VIRUSTOTAL_KEY ? 'OK' : 'FALTA'}\n`;
+  report += `✅ GITHUB_TOKEN: ${GITHUB_TOKEN ? 'OK' : 'FALTA'}\n`;
+  report += `✅ EMAILREP_KEY: ${EMAILREP_KEY ? 'OK' : 'FALTA'}\n`;
   report += `🖼️ Imágenes cargadas: ${misImagenes.length}\n`;
   await sendSafePhoto(chatId, report);
 });
 
 // =====================================================
-//  🤖 COMANDOS DE IA (GROQ, OPENROUTER, GEMINI, POLLINATIONS)
+//  🤖 COMANDOS DE IA
 // =====================================================
 
 // /ai (GROQ)
@@ -241,18 +277,18 @@ if (groq) {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 500,
       });
-      await sendSafePhoto(chatId, `🤖 *Kaori IA (Groq):*\n${completion.choices[0].message.content}`);
+      await sendSafePhoto(chatId, `🤖 *Groq:*\n${completion.choices[0].message.content}`);
     } catch (err) {
-      await sendSafePhoto(chatId, `❌ *Error en IA:* ${err.message}`);
+      await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
     }
   });
 } else {
   bot.onText(/\/ai/, async (msg) => {
-    await sendSafePhoto(msg.chat.id, '❌ *GROQ no configurado.*');
+    await sendSafePhoto(msg.chat.id, '❌ GROQ no configurado.');
   });
 }
 
-// /openrouter (IA con OpenRouter)
+// /openrouter
 bot.onText(/\/openrouter (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -273,11 +309,11 @@ bot.onText(/\/openrouter (.+)/, async (msg, match) => {
     const reply = data.choices?.[0]?.message?.content || '❌ No obtuve respuesta.';
     await sendSafePhoto(chatId, `🧠 *OpenRouter:*\n${reply}`);
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error en OpenRouter:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
-// /gemini (IA de Google)
+// /gemini
 bot.onText(/\/gemini (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -297,7 +333,7 @@ bot.onText(/\/gemini (.+)/, async (msg, match) => {
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '❌ No obtuve respuesta.';
     await sendSafePhoto(chatId, `🧠 *Gemini:*\n${reply}`);
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error en Gemini:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
@@ -322,13 +358,14 @@ bot.onText(/\/chat (.+)/, async (msg, match) => {
     const reply = data.choices?.[0]?.message?.content || '❌ No obtuve respuesta.';
     await sendSafePhoto(chatId, `💬 *Pollinations:*\n${reply}`);
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error en Pollinations:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
 // =====================================================
-//  🎨 COMANDO /imagen (Pollinations)
+//  🎨 IMÁGENES
 // =====================================================
+
 bot.onText(/\/imagen (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const prompt = match[1];
@@ -337,83 +374,63 @@ bot.onText(/\/imagen (.+)/, async (msg, match) => {
     const imageUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=flux&key=${POLLINATIONS_KEY}`;
     await bot.sendPhoto(chatId, imageUrl, { caption: `🖼️ *"${prompt}"*` });
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error al generar imagen:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
-// =====================================================
-//  🌦️ COMANDO /clima (OpenWeather)
-// =====================================================
-if (OPENWEATHER_KEY) {
-  bot.onText(/\/clima (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const ciudad = match[1].trim();
-    await bot.sendChatAction(chatId, 'typing');
-    try {
-      const { data } = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(ciudad)}&appid=${OPENWEATHER_KEY}&units=metric&lang=es`
-      );
-      const text = `🌡️ *${data.name}:*\n` +
-                   `☁️ ${data.weather[0].description}\n` +
-                   `🌡️ Temperatura: ${data.main.temp}°C\n` +
-                   `💧 Humedad: ${data.main.humidity}%\n` +
-                   `💨 Viento: ${data.wind.speed} km/h`;
-      await sendSafePhoto(chatId, text);
-    } catch {
-      await sendSafePhoto(chatId, '❌ *No encontré esa ciudad.* Prueba en inglés (ej: "Mexico City").');
-    }
-  });
-} else {
-  bot.onText(/\/clima/, async (msg) => {
-    await sendSafePhoto(msg.chat.id, '❌ *WeatherAPI no configurado.*');
-  });
-}
-
-// =====================================================
-//  🎵 COMANDOS DE MÚSICA (YouTube)
-// =====================================================
-bot.onText(/\/video (.+)/, async (msg, match) => {
+bot.onText(/\/aisearchimg (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const query = match[1];
-  await bot.sendChatAction(chatId, 'upload_video');
+  await bot.sendChatAction(chatId, 'typing');
   try {
-    const result = await yts(query);
-    const video = result.videos[0];
-    if (!video) return await sendSafePhoto(chatId, '❌ *No encontré el video.*');
-    const stream = ytdl(video.url, { quality: 'highestaudio' });
-    const info = await ytdl.getInfo(video.url);
-    const title = info.videoDetails.title;
-    await bot.sendAudio(chatId, stream, { title, performer: 'YouTube', caption: `🎵 *${title}*` });
-  } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error:* ${err.message}`);
+    const res = await fetch(`https://api.lempi.lat/s/aisearchimg?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
+    const data = await res.json();
+    if (data?.url) await bot.sendPhoto(chatId, data.url, { caption: `🖼️ "${query}"` });
+    else await bot.sendMessage(chatId, '❌ No encontré resultados.');
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al buscar imágenes.');
   }
 });
 
-bot.onText(/\/music (.+)/, (msg, match) => {
-  bot.emit('text', { ...msg, text: `/video ${match[1]}` });
-});
-
-// =====================================================
-//  📲 COMANDO /qr (Genera código QR)
-// =====================================================
-bot.onText(/\/qr (.+)/, async (msg, match) => {
+// /waifu (imagen random)
+bot.onText(/\/waifu/, async (msg) => {
   const chatId = msg.chat.id;
-  const text = match[1];
   try {
-    const qrBuffer = await QRCode.toBuffer(text);
-    await bot.sendPhoto(chatId, qrBuffer, { caption: `📲 *QR:*\n${text}` });
-  } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error al generar QR:* ${err.message}`);
+    const res = await fetch('https://api.waifu.pics/sfw/waifu');
+    const data = await res.json();
+    if (data?.url) {
+      await bot.sendPhoto(chatId, data.url, { caption: '🌸 Waifu random' });
+    } else {
+      await bot.sendMessage(chatId, '❌ No se pudo obtener waifu.');
+    }
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al obtener waifu.');
   }
 });
 
-bot.onText(/\/leerqr/, async (msg) => {
-  await sendSafePhoto(msg.chat.id, '🔧 *Leer QR está en desarrollo.* Pronto estará disponible.');
+// =====================================================
+//  🌤️ CLIMA Y FINANZAS
+// =====================================================
+
+bot.onText(/\/clima (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const ciudad = match[1].trim();
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const { data } = await axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(ciudad)}&appid=${OPENWEATHER_KEY}&units=metric&lang=es`
+    );
+    const text = `🌡️ *${data.name}:*\n` +
+                 `☁️ ${data.weather[0].description}\n` +
+                 `🌡️ Temperatura: ${data.main.temp}°C\n` +
+                 `💧 Humedad: ${data.main.humidity}%\n` +
+                 `💨 Viento: ${data.wind.speed} km/h`;
+    await sendSafePhoto(chatId, text);
+  } catch {
+    await sendSafePhoto(chatId, '❌ No encontré esa ciudad. Prueba en inglés.');
+  }
 });
 
-// =====================================================
-//  💰 COMANDO /dolar (ExchangeRate)
-// =====================================================
 bot.onText(/\/dolar/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendChatAction(chatId, 'typing');
@@ -423,13 +440,10 @@ bot.onText(/\/dolar/, async (msg) => {
     );
     await sendSafePhoto(chatId, `💵 *Dólar hoy:*\n1 USD = ${res.data.conversion_rate} MXN\n📅 ${new Date().toLocaleDateString('es-MX')}`);
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error al obtener el dólar:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
-// =====================================================
-//  ₿ COMANDO /bitcoin (CoinGecko)
-// =====================================================
 bot.onText(/\/bitcoin/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendChatAction(chatId, 'typing');
@@ -437,13 +451,225 @@ bot.onText(/\/bitcoin/, async (msg) => {
     const { data } = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
     await sendSafePhoto(chatId, `₿ *Bitcoin:* $${data.bitcoin.usd} USD`);
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error al obtener Bitcoin:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
 // =====================================================
-//  📖 COMANDO /wikipedia
+//  🎵 MÚSICA Y DESCARGAS
 // =====================================================
+
+bot.onText(/\/video (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const query = match[1];
+  await bot.sendChatAction(chatId, 'upload_video');
+  try {
+    const result = await yts(query);
+    const video = result.videos[0];
+    if (!video) return await sendSafePhoto(chatId, '❌ No encontré el video.');
+    const stream = ytdl(video.url, { quality: 'highestaudio' });
+    const info = await ytdl.getInfo(video.url);
+    const title = info.videoDetails.title;
+    await bot.sendAudio(chatId, stream, { title, performer: 'YouTube', caption: `🎵 *${title}*` });
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
+bot.onText(/\/yta (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const query = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const res = await fetch(`https://api.lempi.lat/dl/yta?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
+    const data = await res.json();
+    if (data?.download_url) await bot.sendAudio(chatId, data.download_url);
+    else await bot.sendMessage(chatId, '❌ No se pudo descargar.');
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al descargar.');
+  }
+});
+
+bot.onText(/\/ytv (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const query = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const res = await fetch(`https://api.lempi.lat/dl/ytv?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
+    const data = await res.json();
+    if (data?.download_url) await bot.sendVideo(chatId, data.download_url);
+    else await bot.sendMessage(chatId, '❌ No se pudo descargar.');
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al descargar.');
+  }
+});
+
+// =====================================================
+//  🔍 OSINT - USUARIO, EMAIL, PHONE, DOMAIN, IP
+// =====================================================
+
+bot.onText(/\/username (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const username = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const res = await fetch(`https://whatsmyname.app/api/v1/username/${username}`);
+    const data = await res.json();
+    if (data?.sites?.length) {
+      let msgText = `🔍 *Resultados para ${username}:*\n\n`;
+      data.sites.slice(0, 20).forEach(site => {
+        if (site.username_found) {
+          msgText += `• [${site.name}](${site.uri})\n`;
+        }
+      });
+      await bot.sendMessage(chatId, msgText);
+    } else {
+      await bot.sendMessage(chatId, `❌ No se encontró el usuario ${username}.`);
+    }
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al buscar usuario.');
+  }
+});
+
+bot.onText(/\/email (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const email = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const res = await fetch(`https://emailrep.io/${email}`);
+    const data = await res.json();
+    if (data) {
+      let msgText = `📧 *Información de ${email}:*\n\n`;
+      msgText += `• Reputación: ${data.reputation || 'N/A'}\n`;
+      msgText += `• Sospechoso: ${data.suspicious ? 'Sí' : 'No'}\n`;
+      msgText += `• Referencias: ${data.references || 0}\n`;
+      if (data.details) {
+        msgText += `• Dominio existe: ${data.details.domain_exists ? 'Sí' : 'No'}\n`;
+        msgText += `• MX válido: ${data.details.valid_mx ? 'Sí' : 'No'}\n`;
+        msgText += `• Proveedor gratuito: ${data.details.free_provider ? 'Sí' : 'No'}\n`;
+      }
+      await bot.sendMessage(chatId, msgText);
+    } else {
+      await bot.sendMessage(chatId, `❌ No se encontró información para ${email}.`);
+    }
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al consultar email.');
+  }
+});
+
+bot.onText(/\/phone (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const phone = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  if (!NUMVERIFY_KEY) {
+    return bot.sendMessage(chatId, '❌ NUMVERIFY_KEY no configurada.');
+  }
+  try {
+    const res = await fetch(`http://apilayer.net/api/validate?access_key=${NUMVERIFY_KEY}&number=${phone}&format=1`);
+    const data = await res.json();
+    if (data.valid) {
+      let msgText = `📞 *Información del número:*\n\n`;
+      msgText += `• Número: ${data.international_format}\n`;
+      msgText += `• País: ${data.country_name}\n`;
+      msgText += `• Operador: ${data.carrier || 'Desconocido'}\n`;
+      msgText += `• Tipo: ${data.line_type || 'N/A'}\n`;
+      msgText += `• Ubicación: ${data.location || 'N/A'}`;
+      await bot.sendMessage(chatId, msgText);
+    } else {
+      await bot.sendMessage(chatId, `❌ Número inválido: ${data.error?.info || 'Desconocido'}`);
+    }
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al consultar número.');
+  }
+});
+
+bot.onText(/\/domain (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const domain = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    whois.lookup(domain, (err, data) => {
+      if (err || !data) {
+        return bot.sendMessage(chatId, `❌ No se encontró WHOIS para ${domain}.`);
+      }
+      const lines = data.split('\n').filter(l => l.trim());
+      let msgText = `🏛️ *WHOIS de ${domain}:*\n\n`;
+      const relevant = ['Domain Name', 'Registry Domain ID', 'Registrar', 'Creation Date', 'Expiration Date', 'Name Server', 'Registrant Name', 'Registrant Email'];
+      lines.forEach(line => {
+        relevant.forEach(key => {
+          if (line.includes(key)) {
+            msgText += `• ${line}\n`;
+          }
+        });
+      });
+      bot.sendMessage(chatId, msgText || '❌ No se encontraron datos relevantes.');
+    });
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al consultar WHOIS.');
+  }
+});
+
+bot.onText(/\/ip (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const ip = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,zip,timezone,isp,org,as,lat,lon`);
+    const data = await res.json();
+    if (data.status === 'success') {
+      let msgText = `🌐 *Información de IP ${ip}:*\n\n`;
+      msgText += `📍 *Ubicación:*\n`;
+      msgText += `• País: ${data.country}\n`;
+      msgText += `• Región: ${data.regionName}\n`;
+      msgText += `• Ciudad: ${data.city}\n`;
+      msgText += `• Código Postal: ${data.zip}\n`;
+      msgText += `• Zona Horaria: ${data.timezone}\n\n`;
+      msgText += `🖥️ *Red:*\n`;
+      msgText += `• ISP: ${data.isp}\n`;
+      msgText += `• Organización: ${data.org}\n`;
+      msgText += `• AS: ${data.as}\n\n`;
+      msgText += `🗺️ *Coordenadas:* ${data.lat}, ${data.lon}\n`;
+      msgText += `[Ver en Google Maps](https://www.google.com/maps?q=${data.lat},${data.lon})`;
+      await bot.sendMessage(chatId, msgText);
+    } else {
+      await bot.sendMessage(chatId, `❌ IP inválida: ${data.message}`);
+    }
+  } catch {
+    await bot.sendMessage(chatId, '❌ Error al consultar IP.');
+  }
+});
+
+// =====================================================
+//  📋 UTILIDADES
+// =====================================================
+
+bot.onText(/\/qr (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const text = match[1];
+  try {
+    const qrBuffer = await QRCode.toBuffer(text);
+    await bot.sendPhoto(chatId, qrBuffer, { caption: `📲 *QR:*\n${text}` });
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
+bot.onText(/\/traducir (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const texto = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: `Traduce esto al español: ${texto}` }],
+      max_tokens: 300,
+    });
+    await sendSafePhoto(chatId, `🌐 *Traducción:*\n${completion.choices[0].message.content}`);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
 bot.onText(/\/wikipedia (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const query = match[1];
@@ -453,18 +679,15 @@ bot.onText(/\/wikipedia (.+)/, async (msg, match) => {
       `https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`
     );
     if (data.type === 'disambiguation') {
-      return await sendSafePhoto(chatId, `❌ *El término "${query}" es ambiguo.*`);
+      return await sendSafePhoto(chatId, `❌ El término "${query}" es ambiguo.`);
     }
     const text = `📖 *${data.title}*\n\n${data.extract || 'Sin resumen.'}\n\n🔗 ${data.content_urls?.desktop?.page || ''}`;
     await sendSafePhoto(chatId, text);
   } catch {
-    await sendSafePhoto(chatId, `❌ *No encontré "${query}" en Wikipedia.*`);
+    await sendSafePhoto(chatId, `❌ No encontré "${query}" en Wikipedia.`);
   }
 });
 
-// =====================================================
-//  📄 COMANDO /resumen (con Groq)
-// =====================================================
 bot.onText(/\/resumen (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const url = match[1];
@@ -483,90 +706,10 @@ bot.onText(/\/resumen (.+)/, async (msg, match) => {
       await sendSafePhoto(chatId, `📄 *Texto extraído:*\n${text.slice(0, 400)}...`);
     }
   } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error al resumir:* ${err.message}`);
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
-// =====================================================
-//  ❓ COMANDO /trivia
-// =====================================================
-bot.onText(/\/trivia/, async (msg) => {
-  const chatId = msg.chat.id;
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const { data } = await axios.get('https://opentdb.com/api.php?amount=1&type=multiple');
-    const q = data.results[0];
-    const options = [...q.incorrect_answers, q.correct_answer].sort(() => Math.random() - 0.5);
-    let text = `❓ *${q.question}*\n\n`;
-    options.forEach((opt, i) => text += `${i+1}. ${opt}\n`);
-    text += `\nResponde con el número de la opción.`;
-    await bot.sendMessage(chatId, text);
-  } catch (err) {
-    await sendSafePhoto(chatId, `❌ *Error:* ${err.message}`);
-  }
-});
-
-// =====================================================
-//  🎯 COMANDO /adivina
-// =====================================================
-const adivinaJuego = new Map();
-bot.onText(/\/adivina (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const numero = parseInt(match[1]);
-  if (isNaN(numero) || numero < 1 || numero > 100) {
-    return await sendSafePhoto(chatId, '❌ *Escribe un número del 1 al 100.*');
-  }
-  if (!adivinaJuego.has(chatId)) {
-    adivinaJuego.set(chatId, Math.floor(Math.random() * 100) + 1);
-  }
-  const objetivo = adivinaJuego.get(chatId);
-  if (numero === objetivo) {
-    adivinaJuego.delete(chatId);
-    await sendSafePhoto(chatId, `🎉 *Correcto!* El número era ${objetivo}. ¡Ganaste!`);
-  } else if (numero < objetivo) {
-    await sendSafePhoto(chatId, `⬆️ *Más alto.* Intenta otra vez.`);
-  } else {
-    await sendSafePhoto(chatId, `⬇️ *Más bajo.* Intenta otra vez.`);
-  }
-});
-bot.onText(/\/adivina/, async (msg) => {
-  const chatId = msg.chat.id;
-  adivinaJuego.delete(chatId);
-  await sendSafePhoto(chatId, '🎯 *Juego de adivinar iniciado!*\nEscribe /adivina [número] (1-100)');
-});
-
-// =====================================================
-//  ♈ COMANDO /horoscopo (con Groq)
-// =====================================================
-if (groq) {
-  bot.onText(/\/horoscopo (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const signo = match[1].toLowerCase();
-    const signosValidos = ['aries', 'tauro', 'geminis', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'acuario', 'piscis'];
-    if (!signosValidos.includes(signo)) {
-      return await sendSafePhoto(chatId, '❌ *Signo no válido.*\nUsa: aries, tauro, geminis, cancer, leo, virgo, libra, escorpio, sagitario, capricornio, acuario, piscis');
-    }
-    await bot.sendChatAction(chatId, 'typing');
-    try {
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: `Genera un horóscopo para el signo ${signo} para hoy, en español, con un tono positivo y amigable.` }],
-        max_tokens: 200,
-      });
-      await sendSafePhoto(chatId, `♈ *Horóscopo para ${signo.charAt(0).toUpperCase() + signo.slice(1)}:*\n${completion.choices[0].message.content}`);
-    } catch (err) {
-      await sendSafePhoto(chatId, `❌ *Error:* ${err.message}`);
-    }
-  });
-} else {
-  bot.onText(/\/horoscopo/, async (msg) => {
-    await sendSafePhoto(msg.chat.id, '❌ *GROQ no configurado.*');
-  });
-}
-
-// =====================================================
-//  📰 COMANDO /noticias (NewsAPI)
-// =====================================================
 bot.onText(/\/noticias/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendChatAction(chatId, 'typing');
@@ -580,38 +723,71 @@ bot.onText(/\/noticias/, async (msg) => {
     });
     await sendSafePhoto(chatId, text);
   } catch {
-    await sendSafePhoto(chatId, '❌ *Error al obtener noticias.* (Necesitas API key de newsapi.org)');
+    await sendSafePhoto(chatId, '❌ Error al obtener noticias.');
   }
 });
 
 // =====================================================
-//  🌐 COMANDO /traducir (con Groq)
+//  🎮 JUEGOS
 // =====================================================
-if (groq) {
-  bot.onText(/\/traducir (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const texto = match[1];
-    await bot.sendChatAction(chatId, 'typing');
-    try {
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: `Traduce esto al español: ${texto}` }],
-        max_tokens: 300,
-      });
-      await sendSafePhoto(chatId, `🌐 *Traducción:*\n${completion.choices[0].message.content}`);
-    } catch (err) {
-      await sendSafePhoto(chatId, `❌ *Error:* ${err.message}`);
-    }
-  });
-} else {
-  bot.onText(/\/traducir/, async (msg) => {
-    await sendSafePhoto(msg.chat.id, '❌ *GROQ no configurado.*');
-  });
-}
 
-// =====================================================
-//  😂 COMANDO /chiste (API de chistes)
-// =====================================================
+bot.onText(/\/trivia/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const { data } = await axios.get('https://opentdb.com/api.php?amount=1&type=multiple');
+    const q = data.results[0];
+    const options = [...q.incorrect_answers, q.correct_answer].sort(() => Math.random() - 0.5);
+    let text = `❓ *${q.question}*\n\n`;
+    options.forEach((opt, i) => text += `${i+1}. ${opt}\n`);
+    text += `\nResponde con el número de la opción.`;
+    await bot.sendMessage(chatId, text);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
+const adivinaJuego = new Map();
+bot.onText(/\/adivina (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const numero = parseInt(match[1]);
+  if (isNaN(numero) || numero < 1 || numero > 100) {
+    return await sendSafePhoto(chatId, '❌ Escribe un número del 1 al 100.');
+  }
+  if (!adivinaJuego.has(chatId)) {
+    adivinaJuego.set(chatId, Math.floor(Math.random() * 100) + 1);
+  }
+  const objetivo = adivinaJuego.get(chatId);
+  if (numero === objetivo) {
+    adivinaJuego.delete(chatId);
+    await sendSafePhoto(chatId, `🎉 Correcto! El número era ${objetivo}. ¡Ganaste!`);
+  } else if (numero < objetivo) {
+    await sendSafePhoto(chatId, `⬆️ Más alto. Intenta otra vez.`);
+  } else {
+    await sendSafePhoto(chatId, `⬇️ Más bajo. Intenta otra vez.`);
+  }
+});
+
+bot.onText(/\/horoscopo (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const signo = match[1].toLowerCase();
+  const signosValidos = ['aries', 'tauro', 'geminis', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'acuario', 'piscis'];
+  if (!signosValidos.includes(signo)) {
+    return await sendSafePhoto(chatId, '❌ Signo no válido.');
+  }
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: `Genera un horóscopo para ${signo} para hoy, en español, positivo.` }],
+      max_tokens: 200,
+    });
+    await sendSafePhoto(chatId, `♈ *Horóscopo para ${signo}:*\n${completion.choices[0].message.content}`);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
+  }
+});
+
 bot.onText(/\/chiste/, async (msg) => {
   const chatId = msg.chat.id;
   try {
@@ -619,44 +795,36 @@ bot.onText(/\/chiste/, async (msg) => {
     const chiste = data.type === 'single' ? data.joke : `${data.setup}\n${data.delivery}`;
     await sendSafePhoto(chatId, `😂 *Chiste:*\n${chiste}`);
   } catch {
-    await sendSafePhoto(chatId, '😂 *¿Por qué los programadores prefieren el otoño? Porque tienen menos bugs.*');
+    await sendSafePhoto(chatId, '😂 ¿Por qué los programadores prefieren el otoño? Porque tienen menos bugs.');
+  }
+});
+
+bot.onText(/\/poema (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const tema = match[1];
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: `Escribe un poema corto sobre "${tema}"` }],
+      max_tokens: 200,
+    });
+    await sendSafePhoto(chatId, `📝 *Poema:*\n${completion.choices[0].message.content}`);
+  } catch (err) {
+    await sendSafePhoto(chatId, `❌ Error: ${err.message}`);
   }
 });
 
 // =====================================================
-//  📝 COMANDO /poema (con Groq)
+//  ⏰ RECORDATORIO
 // =====================================================
-if (groq) {
-  bot.onText(/\/poema (.+)/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const tema = match[1];
-    await bot.sendChatAction(chatId, 'typing');
-    try {
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: `Escribe un poema corto sobre "${tema}"` }],
-        max_tokens: 200,
-      });
-      await sendSafePhoto(chatId, `📝 *Poema:*\n${completion.choices[0].message.content}`);
-    } catch (err) {
-      await sendSafePhoto(chatId, `❌ *Error:* ${err.message}`);
-    }
-  });
-} else {
-  bot.onText(/\/poema/, async (msg) => {
-    await sendSafePhoto(msg.chat.id, '❌ *GROQ no configurado.*');
-  });
-}
 
-// =====================================================
-//  ⏰ COMANDO /recordatorio
-// =====================================================
 const recordatorios = new Map();
 bot.onText(/\/recordatorio (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const params = match[1].split(' ');
   if (params.length < 2) {
-    return await sendSafePhoto(chatId, '❌ *Uso:* /recordatorio [tiempo] [texto]\nEj: /recordatorio 10min Llamar a Juan');
+    return await sendSafePhoto(chatId, '❌ Uso: /recordatorio [tiempo] [texto]\nEj: /recordatorio 10min Llamar a Juan');
   }
   const tiempoStr = params[0];
   const texto = params.slice(1).join(' ');
@@ -668,7 +836,7 @@ bot.onText(/\/recordatorio (.+)/, async (msg, match) => {
 
   const id = Date.now();
   recordatorios.set(id, { chatId, texto, tiempo: Date.now() + segundos * 1000 });
-  await sendSafePhoto(chatId, `⏰ *Recordatorio configurado para ${tiempoStr}*`);
+  await sendSafePhoto(chatId, `⏰ Recordatorio configurado para ${tiempoStr}.`);
   setTimeout(async () => {
     const data = recordatorios.get(id);
     if (data) {
@@ -679,378 +847,9 @@ bot.onText(/\/recordatorio (.+)/, async (msg, match) => {
 });
 
 // =====================================================
-//  🔍 COMANDOS DE LEMPI (BÚSQUEDA, DESCARGA, IA, CANVAS)
-// =====================================================
-
-// /aisearchimg
-bot.onText(/\/aisearchimg (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/s/aisearchimg?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.url) await bot.sendPhoto(chatId, data.url, { caption: `🖼️ "${query}"` });
-    else await bot.sendMessage(chatId, '❌ No encontré resultados.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al buscar imágenes.');
-  }
-});
-
-// /pin
-bot.onText(/\/pin (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  const limit = 20;
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/s/pin?q=${encodeURIComponent(query)}&limit=${limit}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.images) await bot.sendPhoto(chatId, data.images[0], { caption: `📌 Resultados de Pinterest para "${query}"` });
-    else await bot.sendMessage(chatId, '❌ No encontré imágenes.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al buscar en Pinterest.');
-  }
-});
-
-// /sp
-bot.onText(/\/sp (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/s/sp?q=${encodeURIComponent(query)}&limit=10&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.tracks) {
-      let msgText = '🎵 *Resultados en Spotify:*\n\n';
-      data.tracks.slice(0, 5).forEach((t, i) => {
-        msgText += `${i+1}. *${t.name}* - ${t.artists[0].name}\n🔗 ${t.external_urls.spotify}\n\n`;
-      });
-      await bot.sendMessage(chatId, msgText);
-    } else await bot.sendMessage(chatId, '❌ No encontré canciones.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al buscar en Spotify.');
-  }
-});
-
-// /stickers
-bot.onText(/\/stickers (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/s/stickers?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.stickers) await bot.sendSticker(chatId, data.stickers[0].url);
-    else await bot.sendMessage(chatId, '❌ No encontré stickers.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al buscar stickers.');
-  }
-});
-
-// /tiktoksearch
-bot.onText(/\/tiktoksearch (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/s/tiktok?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.videos) await bot.sendVideo(chatId, data.videos[0].url, { caption: `🎵 ${data.videos[0].title}` });
-    else await bot.sendMessage(chatId, '❌ No encontré videos.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al buscar en TikTok.');
-  }
-});
-
-// /applemusic
-bot.onText(/\/applemusic (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/applemusic?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendAudio(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar la música.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /facebook
-bot.onText(/\/facebook (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/facebook?url=${encodeURIComponent(url)}&quality=hd&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendVideo(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el video.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /instagram
-bot.onText(/\/instagram (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/instagram?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendVideo(chatId, data.download_url);
-    else if (data?.image_url) await bot.sendPhoto(chatId, data.image_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el contenido.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /mediafire
-bot.onText(/\/mediafire (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/mediafire?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendDocument(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el archivo.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /spotifydl
-bot.onText(/\/spotifydl (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/spotify?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendAudio(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar la canción.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /tiktokdl
-bot.onText(/\/tiktokdl (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/tiktok?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendVideo(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el video.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /yta (Lempi)
-bot.onText(/\/yta (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/yta?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendAudio(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el audio.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /ytv (Lempi)
-bot.onText(/\/ytv (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/dl/ytv?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.download_url) await bot.sendVideo(chatId, data.download_url);
-    else await bot.sendMessage(chatId, '❌ No se pudo descargar el video.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al descargar.');
-  }
-});
-
-// /brat
-bot.onText(/\/brat (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const text = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/tools/brat?text=${encodeURIComponent(text)}&color=verde&format=image&apikey=${LEMPI_API_KEY}`);
-    const buffer = await res.buffer();
-    await bot.sendPhoto(chatId, buffer, { caption: `😈 "${text}"` });
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al generar la imagen Brat.');
-  }
-});
-
-// /cf
-bot.onText(/\/cf/, async (msg) => {
-  const chatId = msg.chat.id;
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/tools/cf?apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.result) await bot.sendMessage(chatId, `🌊 *Current Flow:*\n${data.result}`);
-    else await bot.sendMessage(chatId, '❌ No se pudo obtener el flujo actual.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al obtener datos.');
-  }
-});
-
-// /emojimix
-bot.onText(/\/emojimix (.+) (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const emoji1 = match[1];
-  const emoji2 = match[2];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/tools/emojimix?emoji1=${encodeURIComponent(emoji1)}&emoji2=${encodeURIComponent(emoji2)}&apikey=${LEMPI_API_KEY}`);
-    const buffer = await res.buffer();
-    await bot.sendPhoto(chatId, buffer, { caption: `🔮 ${emoji1} + ${emoji2}` });
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al mezclar emojis.');
-  }
-});
-
-// /whatmusic
-bot.onText(/\/whatmusic (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const query = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/tools/whatmusic?q=${encodeURIComponent(query)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.result) await bot.sendMessage(chatId, `🎵 *Canción identificada:*\n${data.result}`);
-    else await bot.sendMessage(chatId, '❌ No se pudo identificar la canción.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al identificar.');
-  }
-});
-
-// /transcribe
-bot.onText(/\/transcribe (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const url = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/tools/transcribe?url=${encodeURIComponent(url)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.text) await bot.sendMessage(chatId, `📝 *Transcripción:*\n${data.text}`);
-    else await bot.sendMessage(chatId, '❌ No se pudo transcribir.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al transcribir.');
-  }
-});
-
-// /claude (Lempi)
-bot.onText(/\/claude (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const prompt = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/ai/claude?q=${encodeURIComponent(prompt)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.result) await bot.sendMessage(chatId, `🤖 *Claude:*\n${data.result}`);
-    else await bot.sendMessage(chatId, '❌ No pude obtener respuesta de Claude.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al consultar Claude.');
-  }
-});
-
-// /gemini (Lempi)
-bot.onText(/\/gemini (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const prompt = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/ai/gemini?q=${encodeURIComponent(prompt)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.result) await bot.sendMessage(chatId, `🧠 *Gemini:*\n${data.result}`);
-    else await bot.sendMessage(chatId, '❌ No pude obtener respuesta de Gemini.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al consultar Gemini.');
-  }
-});
-
-// /qwen
-bot.onText(/\/qwen (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const prompt = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/ai/qwen?q=${encodeURIComponent(prompt)}&apikey=${LEMPI_API_KEY}`);
-    const data = await res.json();
-    if (data?.result) await bot.sendMessage(chatId, `📡 *Qwen:*\n${data.result}`);
-    else await bot.sendMessage(chatId, '❌ No pude obtener respuesta de Qwen.');
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al consultar Qwen.');
-  }
-});
-
-// /zimg
-bot.onText(/\/zimg (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const prompt = match[1];
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const res = await fetch(`https://api.lempi.lat/ai/zimg?size=1024x1024&q=${encodeURIComponent(prompt)}&apikey=${LEMPI_API_KEY}`);
-    const buffer = await res.buffer();
-    await bot.sendPhoto(chatId, buffer, { caption: `🖼️ "${prompt}"` });
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al generar imagen.');
-  }
-});
-
-// /welcome (Canvas)
-bot.onText(/\/welcome (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const params = match[1].split(' ');
-  const username = params[0] || 'Usuario';
-  const guildName = params.slice(1).join(' ') || 'Club de Anime';
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const url = `https://api.lempi.lat/api/canvas/welcomev1?username=${encodeURIComponent(username)}&guildName=${encodeURIComponent(guildName)}&guildIcon=https%3A%2F%2Fapi.lempi.lat%2FUka.jpg&memberCount=150&avatar=https%3A%2F%2Fapi.lempi.lat%2FBiy.jpg&background=https%3A%2F%2Fapi.lempi.lat%2FRlK.jpg&quality=80&apikey=${LEMPI_API_KEY}`;
-    const buffer = await fetch(url).then(r => r.buffer());
-    await bot.sendPhoto(chatId, buffer, { caption: `🎉 Bienvenido ${username} a ${guildName}!` });
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al generar la imagen de bienvenida.');
-  }
-});
-
-// /goodbye (Canvas)
-bot.onText(/\/goodbye (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const params = match[1].split(' ');
-  const username = params[0] || 'Usuario';
-  const guildName = params.slice(1).join(' ') || 'Club de Anime';
-  await bot.sendChatAction(chatId, 'typing');
-  try {
-    const url = `https://api.lempi.lat/api/canvas/goodbyev1?username=${encodeURIComponent(username)}&guildName=${encodeURIComponent(guildName)}&guildIcon=https%3A%2F%2Fapi.lempi.lat%2FUka.jpg&memberCount=150&avatar=https%3A%2F%2Fapi.lempi.lat%2FBiy.jpg&background=https%3A%2F%2Fapi.lempi.lat%2FRlK.jpg&quality=80&apikey=${LEMPI_API_KEY}`;
-    const buffer = await fetch(url).then(r => r.buffer());
-    await bot.sendPhoto(chatId, buffer, { caption: `👋 ¡Hasta luego ${username}!` });
-  } catch {
-    await bot.sendMessage(chatId, '❌ Error al generar la imagen de despedida.');
-  }
-});
-
-// =====================================================
 //  💬 RESPUESTA A MENSAJES SIN COMANDOS
 // =====================================================
+
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
@@ -1072,9 +871,10 @@ bot.on('message', async (msg) => {
 // =====================================================
 //  ⚠️ MANEJO DE ERRORES DE POLLING
 // =====================================================
+
 bot.on('polling_error', (error) => {
   console.warn(`⚠️ Error de polling: ${error.code} - ${error.message}`);
 });
 
-console.log('🌸 Kaori Bot Ultra corriendo con TODOS los comandos integrados...');
+console.log('🌸 Kaori Bot Ultra UNIFICADO corriendo...');
 console.log(`🖼️ ${misImagenes.length} imágenes cargadas desde 'assets'`);
